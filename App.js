@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,6 +9,8 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Modal,
+  Pressable,
 } from "react-native";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -16,15 +18,32 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export default function App() {
   const [working, setWorking] = useState(true);
   const [text, setText] = useState();
+  const [date, setDate] = useState();
+  const [newText, setNewText] = useState();
+  const [newDate, setNewDate] = useState();
   const [toDos, setToDos] = useState({});
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editKey, setEditKey] = useState();
   const clickWork = () => {
     setWorking(true);
+    saveBtn(!working);
   };
   const clickTravel = () => {
     setWorking(false);
+    saveBtn(!working);
   };
   const onChangeText = (e) => {
     setText(e);
+  };
+  const onChangeDate = (e) => {
+    setDate(e);
+  };
+  const onChangeNewText = (e) => {
+    setNewText(e);
+  };
+  const onChangeNewDate = (e) => {
+    setNewDate(e);
   };
   const addToDo = async () => {
     if (text === "") {
@@ -47,11 +66,33 @@ export default function App() {
       //const newToDos = {} : 새로운 Object를만들고
       //...toDos : 이전 Object를 가진 새로운 Object를 만들고
       //[Date.now()]: { text, work: working } : 새로운 Object를 추가
-      const newToDos = { ...toDos, [Date.now()]: { text, work: working } };
+      const newToDos = {
+        ...toDos,
+        [Date.now()]: { text, date, work: working, done: false },
+      };
       setToDos(newToDos);
       await saveToDos(newToDos);
     }
     setText("");
+    setDate("");
+  };
+  const saveBtn = (save) => {
+    try {
+      const s = JSON.stringify(save);
+      AsyncStorage.setItem("@toDosBtn", s);
+    } catch (e) {
+      console.log("버튼 위치 세이브 에러" + e);
+    }
+  };
+
+  const loadBtn = async () => {
+    try {
+      const s = await AsyncStorage.getItem("@toDosBtn");
+      //JSON.parse() 스트링을 자바스크립트 오브젝트로 만들어준다.
+      setWorking(JSON.parse(s));
+    } catch (e) {
+      console.log("로드 에러" + e);
+    }
   };
 
   const saveToDos = async (toSave) => {
@@ -96,8 +137,29 @@ export default function App() {
     ]);
   };
 
+  const doneToDo = async (key) => {
+    const newToDos = { ...toDos };
+    newToDos[key].done = true;
+    setToDos(newToDos);
+    await saveToDos(newToDos);
+  };
+
+  const editToDo = () => {
+    const nToDos = toDos;
+
+    nToDos[editKey].date = newDate;
+    nToDos[editKey].text = newText;
+
+    setToDos(nToDos);
+    saveToDos(nToDos);
+
+    setNewText("");
+    setNewDate("");
+  };
+
   useEffect(() => {
     loadToDos();
+    loadBtn();
   }, []);
 
   return (
@@ -126,17 +188,121 @@ export default function App() {
           </Text>
         </TouchableOpacity>
       </View>
-      <View>
-        <TextInput
-          // onChangeText={onChangeText} 인풋 안에 적은 내용을 사용 할 때.
-          value={text}
-          onChangeText={onChangeText}
-          //onSubmitEditing={addToDo} 유저가 완료버튼을 누를때 발생하는 이벤트
-          onSubmitEditing={addToDo}
-          placeholder={working ? "Add a To Do" : "Where do you want to go?"}
-          style={styles.textInput}
-        ></TextInput>
+
+      {/* 수정용 모달 */}
+      <View style={styles.modalCenteredView}>
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={editModalVisible}
+          onRequestClose={() => {
+            setEditModalVisible(!editModalVisible);
+          }}
+        >
+          <View style={styles.modalCenteredView}>
+            <View style={styles.modalView}>
+              <View style={styles.inputs}>
+                <TextInput
+                  // onChangeText={onChangeText} 인풋 안에 적은 내용을 사용 할 때.
+
+                  multiline={true}
+                  value={newDate}
+                  onChangeText={onChangeNewDate}
+                  placeholder="Due date"
+                  style={styles.textInput}
+                ></TextInput>
+                <TextInput
+                  // onChangeText={onChangeText} 인풋 안에 적은 내용을 사용 할 때.
+
+                  multiline={true}
+                  value={newText}
+                  onChangeText={onChangeNewText}
+                  placeholder={working ? "Add a To Do" : "Place name"}
+                  style={styles.textInput}
+                ></TextInput>
+              </View>
+              <View style={styles.btns}>
+                <Pressable
+                  style={[styles.modalButton, styles.modalButtonClose]}
+                  onPress={() => {
+                    editToDo();
+                    setEditModalVisible(!editModalVisible);
+                  }}
+                >
+                  <Text style={styles.modalInsideTextStyle}>Add</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.modalButton, styles.modalButtonClose]}
+                  onPress={() => setEditModalVisible(!editModalVisible)}
+                >
+                  <Text style={styles.modalInsideTextStyle}>Close</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
+      {/* 수정용 모달 */}
+      {/* 입력용 모달 */}
+      <View style={styles.modalCenteredView}>
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => {
+            Alert.alert("Modal has been closed.");
+            setModalVisible(!modalVisible);
+          }}
+        >
+          <View style={styles.modalCenteredView}>
+            <View style={styles.modalView}>
+              <View style={styles.inputs}>
+                <TextInput
+                  // onChangeText={onChangeText} 인풋 안에 적은 내용을 사용 할 때.
+                  multiline={true}
+                  value={date}
+                  onChangeText={onChangeDate}
+                  placeholder="Due date"
+                  style={styles.textInput}
+                ></TextInput>
+                <TextInput
+                  // onChangeText={onChangeText} 인풋 안에 적은 내용을 사용 할 때.
+                  multiline={true}
+                  value={text}
+                  onChangeText={onChangeText}
+                  placeholder={working ? "Add a To Do" : "Place name"}
+                  style={styles.textInput}
+                ></TextInput>
+              </View>
+              <View style={styles.btns}>
+                <Pressable
+                  style={[styles.modalButton, styles.modalButtonClose]}
+                  onPress={() => (addToDo(), setModalVisible(!modalVisible))}
+                >
+                  <Text style={styles.modalInsideTextStyle}>Add</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.modalButton, styles.modalButtonClose]}
+                  onPress={() => setModalVisible(!modalVisible)}
+                >
+                  <Text style={styles.modalInsideTextStyle}>Close</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+        <Pressable
+          style={{
+            ...styles.modalButtonOpen,
+            backgroundColor: working ? "#2F405B" : "#21422E",
+          }}
+          onPress={() => setModalVisible(true)}
+        >
+          <Text style={styles.modalTextStyle}>Add list</Text>
+        </Pressable>
+      </View>
+
+      {/* 입력용 모달 */}
 
       {/* toDos 리스트를 로딩할때 로딩표시가 뜨게 만듬 */}
       {toDos.length === 0 ? (
@@ -168,19 +334,47 @@ toDos의 속성 이름을 가저와서 배열로 반환 했고 그 이름들을 
                 }}
                 key={key}
               >
-                <Text style={styles.text}>{toDos[key].text}</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    deleteToDo(key);
-                  }}
-                >
-                  <Ionicons
-                    style={styles.icons}
-                    name="checkmark-done-circle-sharp"
-                    size={24}
-                    color="#00D415"
-                  />
-                </TouchableOpacity>
+                <View style={styles.textBox}>
+                  <Text style={styles.text}>{toDos[key].date}</Text>
+                  <Text style={styles.text}>{toDos[key].text}</Text>
+                </View>
+                <View style={styles.btns}>
+                  <TouchableOpacity
+                    style={{ marginHorizontal: 8 }}
+                    onPress={() => {
+                      doneToDo(key);
+                    }}
+                  >
+                    <Ionicons
+                      style={{
+                        ...styles.icons,
+                        color: toDos[key].done === true ? "#10E100" : "white",
+                      }}
+                      name="checkmark-done-circle-sharp"
+                      size={24}
+                    />
+                  </TouchableOpacity>
+                  {toDos[key].done === false ? (
+                    <TouchableOpacity
+                      style={{ marginHorizontal: 8 }}
+                      onPress={() => {
+                        setEditModalVisible(!editModalVisible);
+                        setEditKey(key);
+                      }}
+                    >
+                      <AntDesign name="edit" size={24} color="white" />
+                    </TouchableOpacity>
+                  ) : null}
+
+                  <TouchableOpacity
+                    style={{ marginHorizontal: 8 }}
+                    onPress={() => {
+                      deleteToDo(key);
+                    }}
+                  >
+                    <AntDesign name="delete" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
               </View>
             ) : null
           )}
@@ -207,13 +401,17 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   textInput: {
+    flexShrink: 1,
     backgroundColor: "white",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    marginVertical: 30,
     borderRadius: 20,
-    marginHorizontal: 20,
+    width: 200,
+    paddingVertical: 5,
     fontWeight: "700",
+    fontSize: 17,
+  },
+  inputs: {
+    marginVertical: 10,
+    paddingHorizontal: 5,
   },
   textWorkList: {
     flexDirection: "row",
@@ -224,9 +422,73 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 15,
   },
+  textBox: {
+    width: 170,
+  },
   text: {
+    marginVertical: 3,
+    paddingHorizontal: 10,
     fontSize: 17,
     fontWeight: "700",
     color: "white",
+  },
+  btns: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    flexDirection: "row",
+  },
+  modalCenteredView: {
+    marginVertical: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalView: {
+    marginTop: 200,
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 35,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalButton: {
+    marginHorizontal: 10,
+    borderRadius: 10,
+    padding: 7,
+    elevation: 2,
+  },
+  modalButtonOpen: {
+    marginHorizontal: 10,
+    borderRadius: 10,
+    padding: 10,
+    elevation: 2,
+  },
+  modalButtonClose: {
+    backgroundColor: "#2196F3",
+  },
+  modalTextStyle: {
+    paddingHorizontal: 115,
+    color: "white",
+    fontWeight: "bold",
+    textAlign: "center",
+    fontSize: 20,
+  },
+  modalInsideTextStyle: {
+    color: "white",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  modalText: {
+    fontSize: 20,
+    marginBottom: 15,
+    textAlign: "center",
   },
 });
