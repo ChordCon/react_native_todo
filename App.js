@@ -162,7 +162,7 @@ export default function App() {
       loadToDos();
       loadBtn();
     }
-  });
+  }, []);
 
   return (
     <View style={styles.container}>
