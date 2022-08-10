@@ -158,9 +158,11 @@ export default function App() {
   };
 
   useEffect(() => {
-    loadToDos();
-    loadBtn();
-  }, []);
+    if (toDos !== null) {
+      loadToDos();
+      loadBtn();
+    }
+  });
 
   return (
     <View style={styles.container}>
@@ -305,24 +307,12 @@ export default function App() {
       {/* 입력용 모달 */}
 
       {/* toDos 리스트를 로딩할때 로딩표시가 뜨게 만듬 */}
-      {toDos.length === 0 ? (
-        <View style={styles.nowWeather}>
-          <ActivityIndicator color={"white"} size={"large"} />
-        </View>
-      ) : (
+      {toDos === null ? null : (
         <ScrollView>
-          {/* Object.keys() 메소드는 주어진 객체의 속성 이름들을 일반적인 반복문과 동일한 순서로 순회되는 열거할 수 있는 배열로 반환합니다.
-  const object1 = {
-  a: 'somestring',
-  b: 42,
-  c: false
-};
-console.log(Object.keys(object1));
-// expected output: Array ["a", "b", "c"]
+          {/* toDos의 속성 이름을 가저와서 배열로 반환 했고 그 이름들을 map함수를 써서 
+         각각의 key에 {toDos[key].text}를 실행.
+          */}
 
-toDos의 속성 이름을 가저와서 배열로 반환 했고 그 이름들을 map함수를 써서 
-각각의 key에 {toDos[key].text}를 실행.
-  */}
           {Object.keys(toDos).map((key) =>
             // toDos[key].work === working ? work에서 작성된 리스트는 working를 true로 가지고
             // work를 눌렀을때 working은 true이므로 work를 눌렀을때는 work에서 작성된 리스트만 뜨고 반대의 경우 반대만뜸

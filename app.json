@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ToDo",
-    "slug": "ToDo",
+    "name": "Work & Travel",
+    "slug": "work-and-travel",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -28,6 +28,8 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "description": "",
+    "githubUrl": "https://github.com/ChordCon/react_native_todo"
   }
 }
